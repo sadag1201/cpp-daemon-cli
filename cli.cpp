@@ -1,13 +1,18 @@
-#include<bits/stdc++.h>
+#include <iostream>
+#include <string>
+#include <limits>
+#include <unistd.h>
+#include <fcntl.h>
 using namespace std;
 
 class Client {
-    int fd;
+    int fdIn, fdOut;
 
 public:
     bool connect() {
-        fd = open("/tmp/numberpipe", O_RDWR);
-        if (fd == -1) {
+        fdIn = open("/tmp/numberpipe_in", O_WRONLY);
+        fdOut = open("/tmp/numberpipe_out", O_RDONLY);
+        if (fdIn == -1 || fdOut == -1) {
             cerr << "Cannot connect to daemon" << endl;
             return false;
         }
@@ -15,14 +20,14 @@ public:
     }
     
     void disconnect() {
-        if (fd != -1) close(fd);
+        if (fdIn != -1) close(fdIn);
+        if (fdOut != -1) close(fdOut);
     }
     
     bool send(const string& cmd, string& response) {
-        if (write(fd, cmd.c_str(), cmd.length()) == -1) return false;
-        
+        if (write(fdIn, cmd.c_str(), cmd.length()) == -1) return false;
         char buffer[4096];
-        ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
+        ssize_t bytesRead = read(fdOut, buffer, sizeof(buffer) - 1);
         if (bytesRead == -1) return false;
         buffer[bytesRead] = '\0';
         response = buffer;
