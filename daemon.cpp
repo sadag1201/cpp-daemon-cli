@@ -1,4 +1,13 @@
-#include<bits/stdc++.h>
+#include <iostream>
+#include <map>
+#include <mutex>
+#include <string>
+#include <sstream>
+#include <ctime>
+#include <unistd.h>
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 using namespace std;
 
 class NumberManager {
@@ -69,29 +78,30 @@ string processCommand(NumberManager& mgr, const string& cmd) {
 
 int main() {
     NumberManager mgr;
-    const char* pipePath = "/tmp/numberpipe";
+    const char* pipeIn = "/tmp/numberpipe_in";
+    const char* pipeOut = "/tmp/numberpipe_out";
     
-    unlink(pipePath);
-    if (mkfifo(pipePath, 0666) != 0) {
-        cerr << "Failed to create pipe" << endl;
-        return 1;
-    }
-    
-    cout << "Daemon started on " << pipePath << endl;
-    
+    unlink(pipeIn);
+    unlink(pipeOut);
+    mkfifo(pipeIn, 0666);
+    mkfifo(pipeOut, 0666);
+
+    cout << "Daemon started\n";
+
+    int fdIn = open(pipeIn, O_RDONLY);
+    int fdOut = open(pipeOut, O_WRONLY);
+
     while (true) {
-        int fd = open(pipePath, O_RDWR);
-        if (fd != -1) {
-            char buffer[1024];
-            ssize_t bytesRead = read(fd, buffer, sizeof(buffer) - 1);
-            if (bytesRead > 0) {
-                buffer[bytesRead] = '\0';
-                string response = processCommand(mgr, buffer);
-                write(fd, response.c_str(), response.length());
-            }
-            close(fd);
+        char buffer[1024];
+        ssize_t bytesRead = read(fdIn, buffer, sizeof(buffer) - 1);
+        if (bytesRead > 0) {
+            buffer[bytesRead] = '\0';
+            string response = processCommand(mgr, buffer);
+            write(fdOut, response.c_str(), response.length());
         }
     }
-    
+
+    close(fdIn);
+    close(fdOut);
     return 0;
 }
